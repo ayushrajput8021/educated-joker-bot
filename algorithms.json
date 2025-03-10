@@ -1,0 +1,32 @@
+{
+  "algorithms": {
+    "binary_search": {
+      "name": "Binary Search",
+      "description": "An efficient search algorithm that works on sorted arrays by repeatedly dividing the search interval in half",
+      "code": "function binarySearch(arr, target) {\n  let left = 0;\n  let right = arr.length - 1;\n\n  while (left <= right) {\n    let mid = Math.floor((left + right) / 2);\n    if (arr[mid] === target) return mid;\n    if (arr[mid] < target) left = mid + 1;\n    else right = mid - 1;\n  }\n  return -1;\n}",
+      "time_complexity": "O(log n)",
+      "space_complexity": "O(1)"
+    },
+    "linear_search": {
+      "name": "Linear Search",
+      "description": "Simple search algorithm that checks each element in sequence until a match is found",
+      "code": "function linearSearch(arr, target) {\n  for (let i = 0; i < arr.length; i++) {\n    if (arr[i] === target) return i;\n  }\n  return -1;\n}",
+      "time_complexity": "O(n)",
+      "space_complexity": "O(1)"
+    },
+    "bubble_sort": {
+      "name": "Bubble Sort",
+      "description": "Simple sorting algorithm that repeatedly steps through the list, compares adjacent elements and swaps them if in wrong order",
+      "code": "function bubbleSort(arr) {\n  for (let i = 0; i < arr.length; i++) {\n    for (let j = 0; j < arr.length - i - 1; j++) {\n      if (arr[j] > arr[j + 1]) {\n        let temp = arr[j];\n        arr[j] = arr[j + 1];\n        arr[j + 1] = temp;\n      }\n    }\n  }\n  return arr;\n}",
+      "time_complexity": "O(n^2)",
+      "space_complexity": "O(1)"
+    },
+    "insertion_sort": {
+      "name": "Insertion Sort",
+      "description": "Simple sorting algorithm that builds the final sorted array one item at a time",
+      "code": "function insertionSort(arr) {\n  for (let i = 1; i < arr.length; i++) {\n    let key = arr[i];\n    let j = i - 1;\n    while (j >= 0 && arr[j] > key) {\n      arr[j + 1] = arr[j];\n      j--;\n    }\n    arr[j + 1] = key;\n  }\n  return arr;\n}",
+      "time_complexity": "O(n^2)",
+      "space_complexity": "O(1)"
+    }
+  }
+}
