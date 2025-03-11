@@ -1,7 +1,17 @@
 const { Telegraf } = require('telegraf');
 const dotenv = require('dotenv');
-
 dotenv.config();
+
+const { GoogleGenerativeAI } = require('@google/generative-ai');
+const genAI = new GoogleGenerativeAI(process.env.GEMINI_KEY);
+
+const model = genAI.getGenerativeModel(
+	{ model: 'gemini-2.0-flash-lite' },
+	{
+		systemInstruction:
+			'You are a helpful assistant that can provide information about algorithms and jokes.',
+	}
+);
 
 const bot = new Telegraf(process.env.BOT_TOKEN);
 
@@ -19,17 +29,27 @@ try {
 	);
 
 	bot.command('joke', async (ctx) => {
-		const joke = await fetch('https://v2.jokeapi.dev/joke/Any?type=single');
-		const data = await joke.json();
-		if (data.joke) {
-			ctx.reply(data.joke);
+		const joke = await model.generateContent('Tell me a joke');
+
+		if (joke.response.text()) {
+			ctx.reply(joke.response.text());
 		} else {
 			ctx.reply('No joke found');
 		}
 	});
 
-	bot.command('algorithm', (ctx) => {
+	bot.command('algorithm', async (ctx) => {
 		const algorithm = ctx.message.text.split(' ')[1];
+
+		if (!algorithm) {
+			ctx.reply(
+				'Please specify an algorithm name. Example: /algorithm bubble_sort'
+			);
+			return;
+		}
+
+		const algoName = algorithm.split('_').join(' ');
+
 		const data = require('./algorithms.json');
 		if (data.algorithms[algorithm]) {
 			ctx.reply(
@@ -49,7 +69,59 @@ try {
 				{ parse_mode: 'MarkdownV2' }
 			);
 		} else {
-			ctx.reply('use /algohelp help to get the list of algorithms');
+			// Send a waiting message
+			const waitMsg = await ctx.reply(
+				`Generating information for ${algoName}...`
+			);
+
+			try {
+				// Use the LLM to generate algorithm information
+				const prompt = `Generate detailed information about the "${algoName}" algorithm with the following structure:
+1. A brief description of what the algorithm does and its use cases
+2. Pseudocode or implementation in a common programming language (preferably JavaScript)
+3. Time complexity analysis
+4. Space complexity analysis
+
+Format your response as a JSON object with these fields:
+{
+  "name": "${algoName}",
+  "description": "detailed description",
+  "code": "implementation code",
+  "time_complexity": "e.g., O(n log n)",
+  "space_complexity": "e.g., O(n)"
+}`;
+
+				const response = await model.generateContent(prompt);
+				const responseText = response.response.text();
+
+				// Extract the JSON from the response
+				const jsonMatch = responseText.match(/\{[\s\S]*\}/);
+				if (!jsonMatch) {
+					throw new Error('Could not extract JSON from the response');
+				}
+
+				const algoData = JSON.parse(jsonMatch[0]);
+
+				// Send the formatted response
+				ctx.reply(
+					`*Name:* ${escapeMarkdown(algoData.name)}\n` +
+						`*Description:* ${escapeMarkdown(algoData.description)}\n` +
+						`*Code:* \`\`\`${escapeMarkdown(algoData.code)}\`\`\`\n` +
+						`*Time Complexity:* ${escapeMarkdown(algoData.time_complexity)}\n` +
+						`*Space Complexity:* ${escapeMarkdown(algoData.space_complexity)}`,
+					{ parse_mode: 'MarkdownV2' }
+				);
+
+				// Delete the waiting message
+				ctx.telegram
+					.deleteMessage(waitMsg.chat.id, waitMsg.message_id)
+					.catch((e) => console.log('Could not delete message:', e));
+			} catch (error) {
+				console.error('Error generating algorithm information:', error);
+				ctx.reply(
+					`Sorry, I couldn't generate information for "${algoName}". Please try again or use /algohelp to see available algorithms.`
+				);
+			}
 		}
 	});
 
